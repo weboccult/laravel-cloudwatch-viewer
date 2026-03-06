@@ -29,6 +29,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AWS Authentication
+    |--------------------------------------------------------------------------
+    | The package will use credentials in this order:
+    | 1. Access key + secret (if AWS_ACCESS_KEY_ID is set)
+    | 2. Named profile (if AWS_PROFILE is set)
+    | 3. IAM role (EC2/ECS/App Runner instance role — no config needed)
+    */
+    'aws_key'     => env('AWS_ACCESS_KEY_ID'),
+    'aws_secret'  => env('AWS_SECRET_ACCESS_KEY'),
+    'aws_profile' => env('AWS_PROFILE'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Query Limit
     |--------------------------------------------------------------------------
     | Maximum number of log entries returned per CloudWatch Insights query.

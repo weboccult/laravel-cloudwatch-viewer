@@ -185,10 +185,21 @@ class LogViewerController extends Controller
 
     private function makeClient(): CloudWatchLogsClient
     {
-        return new CloudWatchLogsClient([
-            'version' => 'latest',
+        $config = [
             'region'  => config('cloudwatch-viewer.region', 'us-east-1'),
-        ]);
+            'version' => 'latest',
+        ];
+
+        if (config('cloudwatch-viewer.aws_key') && config('cloudwatch-viewer.aws_secret')) {
+            $config['credentials'] = [
+                'key'    => config('cloudwatch-viewer.aws_key'),
+                'secret' => config('cloudwatch-viewer.aws_secret'),
+            ];
+        } elseif (config('cloudwatch-viewer.aws_profile')) {
+            $config['profile'] = config('cloudwatch-viewer.aws_profile');
+        }
+
+        return new CloudWatchLogsClient($config);
     }
 
     private function getEnabledGroups(): array
