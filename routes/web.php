@@ -12,4 +12,7 @@ Route::group([
 
     Route::get('/fetch', [LogViewerController::class, 'fetch'])
         ->name('cloudwatch-viewer.fetch');
+
+    Route::get('/live', [LogViewerController::class, 'live'])
+        ->name('cloudwatch-viewer.live');
 });

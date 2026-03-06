@@ -159,6 +159,42 @@
     }
     .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
 
+    .btn-live {
+        width: 100%; padding: 9px; font-size: 12px; font-weight: 600;
+        font-family: 'IBM Plex Mono', monospace; letter-spacing: .06em;
+        background: transparent; color: var(--error);
+        border: 1px solid var(--error); border-radius: var(--radius);
+        cursor: pointer; transition: all .15s;
+    }
+    .btn-live:hover { background: rgba(255,77,77,.1); }
+    .btn-live.live-active { background: rgba(255,77,77,.15); }
+
+    .live-indicator {
+        display: flex; align-items: center; gap: 6px;
+        font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+        font-weight: 600; letter-spacing: .06em; color: var(--error);
+    }
+    .live-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: var(--error);
+        animation: pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes flashNew {
+        0%   { background: rgba(0,255,136,.12); }
+        100% { background: transparent; }
+    }
+    .row-new { animation: flashNew 1.5s ease-out forwards; }
+
+    .tz-select {
+        width: 100%; padding: 6px 8px; font-size: 11px;
+        font-family: 'IBM Plex Mono', monospace;
+        background: var(--surface2); border: 1px solid var(--border);
+        border-radius: var(--radius); color: var(--text);
+        outline: none; transition: border-color .15s; cursor: pointer;
+    }
+    .tz-select:focus { border-color: var(--accent); }
+    .tz-select option { background: var(--surface2); }
+
     /* ── MAIN CONTENT ─────────────────────────────────────────── */
     .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
     .main::-webkit-scrollbar { width: 6px; }
@@ -232,6 +268,21 @@
         text-decoration: underline; text-decoration-style: dotted;
     }
     .rid-cell:hover { color: #93c5fd; }
+
+    .toggle-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 0; }
+    .toggle-item input[type="checkbox"] {
+        appearance: none; width: 14px; height: 14px; flex-shrink: 0;
+        border: 1px solid var(--border); border-radius: 3px;
+        background: var(--surface2); cursor: pointer; position: relative;
+        transition: border-color .15s, background .15s;
+    }
+    .toggle-item input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+    .toggle-item input[type="checkbox"]:checked::after {
+        content: ''; position: absolute; left: 4px; top: 1px;
+        width: 4px; height: 8px; border: 2px solid #000;
+        border-left: none; border-top: none; transform: rotate(45deg);
+    }
+    .toggle-item label { font-size: 12px; color: var(--text-dim); cursor: pointer; }
 
     /* Empty state */
     .empty-state {
@@ -359,6 +410,12 @@
             </div>
         </div>
 
+        <!-- TIMEZONE -->
+        <div>
+            <div class="section-label">Timezone</div>
+            <select id="tzSelect" class="tz-select"></select>
+        </div>
+
         <!-- DATE RANGE -->
         <div>
             <div class="section-label">Date Range</div>
@@ -379,11 +436,16 @@
                 <input type="text" id="filterRequestId"  class="search-input" placeholder="Request ID">
                 <input type="text" id="filterUrl"        class="search-input" placeholder="URL / Endpoint">
             </div>
+            <div class="toggle-item" style="margin-top:10px;">
+                <input type="checkbox" id="filterHasContext">
+                <label for="filterHasContext">Hide logs without context</label>
+            </div>
         </div>
 
         <hr class="divider">
 
         <button class="btn-primary" id="searchBtn">→ Search Logs</button>
+        <button class="btn-live" id="liveBtn">▶ Go Live</button>
         <button class="btn-secondary" id="resetBtn">Reset Filters</button>
 
     </aside>
@@ -400,6 +462,9 @@
         <!-- Toolbar -->
         <div class="toolbar" id="toolbar" style="display:none;">
             <div class="toolbar-count" id="toolbarCount"></div>
+            <div class="live-indicator" id="liveIndicator" style="display:none;">
+                <div class="live-dot"></div><span>LIVE</span>
+            </div>
         </div>
 
         <!-- Table wrapper -->
@@ -461,7 +526,12 @@
 
     const PAGE_SIZE   = 25;
     const FETCH_URL   = '{{ route('cloudwatch-viewer.fetch') }}';
+    const STREAM_URL  = '{{ route('cloudwatch-viewer.live') }}';
     const COLUMNS     = @json($columns);
+
+    let activeTimezone  = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let liveInterval    = null;
+    let liveNextStartMs = null; // UTC millisecond cursor — kept in ms to avoid precision loss
 
     let allLogs       = [];
     let currentPage   = 1;
@@ -491,15 +561,44 @@
     function formatTs(ts) {
         if (!ts) return '—';
         try {
-            // CloudWatch returns timestamps like "2024-01-15 12:34:56.789"
-            const d = new Date(ts.replace(' ', 'T'));
+            // CloudWatch @timestamp is UTC — normalise to ISO and add Z so
+            // the Date constructor treats it as UTC regardless of browser TZ
+            const iso = (ts.includes('T') ? ts : ts.replace(' ', 'T'))
+                            .replace(/(\.\d+)?$/, 'Z').replace('ZZ', 'Z');
+            const d = new Date(iso);
             if (isNaN(d)) return escHtml(ts);
-            return d.toLocaleString(undefined, {
-                year:'numeric', month:'2-digit', day:'2-digit',
-                hour:'2-digit', minute:'2-digit', second:'2-digit',
-                hour12: false
-            });
+            return new Intl.DateTimeFormat('sv', {
+                timeZone: activeTimezone,
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+            }).format(d); // sv locale → "YYYY-MM-DD HH:mm:ss"
         } catch(e) { return escHtml(ts); }
+    }
+
+    // Convert a UTC Unix timestamp (seconds) to a datetime-local string in tz
+    function utcSecToDatetimeLocal(unixSec, tz) {
+        return new Intl.DateTimeFormat('sv', {
+            timeZone: tz,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit',
+        }).format(new Date(unixSec * 1000)).replace(' ', 'T');
+    }
+
+    // Convert a datetime-local string (interpreted in tz) to UTC Unix seconds
+    function datetimeLocalToUnixSec(str, tz) {
+        if (!str) return null;
+        // Parse the input as if it were UTC (baseline reference point)
+        const base = new Date(str + ':00Z');
+        // Ask Intl what that same UTC instant looks like in the target timezone
+        const inTz = new Intl.DateTimeFormat('sv', {
+            timeZone: tz,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+        }).format(base).replace(' ', 'T');
+        // diff = how many ms ahead/behind the TZ is from UTC at this moment
+        const diff = base.getTime() - new Date(inTz + 'Z').getTime();
+        // Apply that offset to the original input to get the true UTC instant
+        return Math.floor((base.getTime() + diff) / 1000);
     }
 
     // ── Cell renderer ─────────────────────────────────────────
@@ -521,16 +620,78 @@
         }
     }
 
-    // ── Default date range (last 24 hours) ────────────────────
+    // ── Default date range (last 24 hours in active timezone) ─
     function setDefaultDates() {
-        const now  = new Date();
-        const from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const fmt  = d => {
-            const pad = n => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        };
-        document.getElementById('startDate').value = fmt(from);
-        document.getElementById('endDate').value   = fmt(now);
+        const nowSec  = Math.floor(Date.now() / 1000);
+        const fromSec = nowSec - 24 * 3600;
+        document.getElementById('startDate').value = utcSecToDatetimeLocal(fromSec, activeTimezone);
+        document.getElementById('endDate').value   = utcSecToDatetimeLocal(nowSec,  activeTimezone);
+    }
+
+    // ── Populate timezone selector ─────────────────────────────
+    function buildTimezoneSelect() {
+        const zones = [
+            'UTC',
+            'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+            'America/Anchorage','Pacific/Honolulu','America/Phoenix',
+            'America/Toronto','America/Vancouver','America/Sao_Paulo',
+            'America/Argentina/Buenos_Aires','America/Mexico_City','America/Bogota',
+            'Europe/London','Europe/Dublin','Europe/Lisbon',
+            'Europe/Paris','Europe/Berlin','Europe/Rome','Europe/Madrid',
+            'Europe/Amsterdam','Europe/Stockholm','Europe/Helsinki',
+            'Europe/Athens','Europe/Istanbul','Europe/Moscow',
+            'Africa/Cairo','Africa/Johannesburg','Africa/Lagos','Africa/Nairobi',
+            'Asia/Dubai','Asia/Riyadh','Asia/Tehran',
+            'Asia/Karachi','Asia/Kolkata','Asia/Dhaka',
+            'Asia/Bangkok','Asia/Singapore','Asia/Shanghai',
+            'Asia/Hong_Kong','Asia/Tokyo','Asia/Seoul',
+            'Australia/Perth','Australia/Adelaide','Australia/Sydney',
+            'Pacific/Auckland','Pacific/Fiji',
+        ];
+        const now = new Date();
+        const withOffsets = zones.map(tz => {
+            try {
+                const localStr = new Intl.DateTimeFormat('sv', {
+                    timeZone: tz,
+                    year:'numeric', month:'2-digit', day:'2-digit',
+                    hour:'2-digit', minute:'2-digit', second:'2-digit',
+                }).format(now).replace(' ', 'T');
+                const offsetMin = Math.round((new Date(localStr + 'Z').getTime() - now.getTime()) / 60000);
+                const sign = offsetMin >= 0 ? '+' : '-';
+                const abs  = Math.abs(offsetMin);
+                const h    = String(Math.floor(abs / 60)).padStart(2, '0');
+                const m    = String(abs % 60).padStart(2, '0');
+                return { tz, label: `(UTC${sign}${h}:${m}) ${tz.replace(/_/g, ' ')}`, offsetMin };
+            } catch(e) { return { tz, label: tz, offsetMin: 0 }; }
+        });
+        withOffsets.sort((a, b) => a.offsetMin - b.offsetMin || a.tz.localeCompare(b.tz));
+
+        const select = document.getElementById('tzSelect');
+        // Ensure the browser's detected timezone appears even if not in the curated list
+        if (!zones.includes(activeTimezone)) {
+            const opt = document.createElement('option');
+            opt.value = activeTimezone; opt.selected = true;
+            opt.textContent = activeTimezone.replace(/_/g, ' ');
+            select.appendChild(opt);
+        }
+        withOffsets.forEach(({ tz, label }) => {
+            const opt = document.createElement('option');
+            opt.value = tz;
+            opt.textContent = label;
+            opt.selected = (tz === activeTimezone);
+            select.appendChild(opt);
+        });
+    }
+
+    // ── Convert date inputs when timezone changes ──────────────
+    function updateDateInputsForTimezone(newTz) {
+        const startEl = document.getElementById('startDate');
+        const endEl   = document.getElementById('endDate');
+        const startTs = startEl.value ? datetimeLocalToUnixSec(startEl.value, activeTimezone) : null;
+        const endTs   = endEl.value   ? datetimeLocalToUnixSec(endEl.value,   activeTimezone) : null;
+        activeTimezone = newTz;
+        if (startTs !== null) startEl.value = utcSecToDatetimeLocal(startTs, newTz);
+        if (endTs   !== null) endEl.value   = utcSecToDatetimeLocal(endTs,   newTz);
     }
 
     // ── Level pill selection ───────────────────────────────────
@@ -554,9 +715,13 @@
         params.set('message',    document.getElementById('filterMessage').value.trim());
         params.set('user_id',    document.getElementById('filterUserId').value.trim());
         params.set('request_id', document.getElementById('filterRequestId').value.trim());
-        params.set('url',        document.getElementById('filterUrl').value.trim());
-        params.set('start_date', document.getElementById('startDate').value);
-        params.set('end_date',   document.getElementById('endDate').value);
+        params.set('url',         document.getElementById('filterUrl').value.trim());
+        params.set('has_context', document.getElementById('filterHasContext').checked ? '1' : '0');
+
+        const startTs = datetimeLocalToUnixSec(document.getElementById('startDate').value, activeTimezone);
+        const endTs   = datetimeLocalToUnixSec(document.getElementById('endDate').value,   activeTimezone);
+        if (startTs !== null) params.set('start_ts', startTs);
+        if (endTs   !== null) params.set('end_ts',   endTs);
 
         return params;
     }
@@ -758,6 +923,7 @@
 
     // ── Reset ──────────────────────────────────────────────────
     document.getElementById('resetBtn').addEventListener('click', () => {
+        if (liveInterval) stopLive();
         document.querySelectorAll('#groupList input[type="checkbox"]').forEach(cb => cb.checked = true);
         document.querySelectorAll('.level-pill').forEach(p => {
             p.classList.toggle('active', p.dataset.level === 'ALL');
@@ -767,7 +933,101 @@
         document.getElementById('filterMessage').value   = '';
         document.getElementById('filterUserId').value    = '';
         document.getElementById('filterRequestId').value = '';
-        document.getElementById('filterUrl').value       = '';
+        document.getElementById('filterUrl').value            = '';
+        document.getElementById('filterHasContext').checked   = false;
+    });
+
+    // ── Live streaming ─────────────────────────────────────────
+    function startLive() {
+        if (liveInterval) return;
+        const groups = [...document.querySelectorAll('#groupList input[type="checkbox"]:checked')];
+        if (!groups.length) { showError('Please select at least one log group.'); return; }
+
+        allLogs         = [];
+        currentPage     = 1;
+        liveNextStartMs = Date.now() - 60_000; // seed: last 60 s in ms
+        hideError();
+        setLiveActive(true);
+        pollLive();                                             // immediate first hit
+        liveInterval = setInterval(pollLive, 5000);
+    }
+
+    function stopLive() {
+        clearInterval(liveInterval);
+        liveInterval = null;
+        setLiveActive(false);
+    }
+
+    async function pollLive() {
+        const params = buildParams();
+        // Replace date-range params with the ms cursor — no seconds rounding
+        params.delete('start_ts');
+        params.delete('end_ts');
+        params.set('start_ts_ms', liveNextStartMs);
+
+        try {
+            const res  = await fetch(`${STREAM_URL}?${params.toString()}`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                showError(data.error || `Live poll error (${res.status})`);
+                stopLive();
+                return;
+            }
+
+            // Surface partial warnings (some groups failed) without stopping live
+            if (data.warnings && data.warnings.length) {
+                showError('Warning: ' + data.warnings.join(' | '));
+            } else {
+                hideError();
+            }
+
+            if (data.next_start_ms) liveNextStartMs = data.next_start_ms;
+
+            if (data.events && data.events.length > 0) {
+                const newCount = data.events.length;
+                allLogs = [...data.events, ...allLogs].slice(0, 2000); // cap
+                currentPage = 1;
+                renderTable();
+                flashNewRows(newCount);
+            }
+
+            // Keep toolbar visible with live count even when no new events
+            document.getElementById('toolbar').style.display = 'flex';
+            document.getElementById('toolbarCount').innerHTML =
+                `<strong>${allLogs.length}</strong> logs captured`;
+        } catch (err) {
+            // Network hiccup — keep polling, don't stop live
+            console.warn('Live poll failed:', err.message);
+        }
+    }
+
+    function flashNewRows(count) {
+        const rows = document.querySelectorAll('#logTableBody tr');
+        for (let i = 0; i < Math.min(count, rows.length); i++) {
+            rows[i].classList.remove('row-new');
+            void rows[i].offsetWidth; // force reflow so animation restarts
+            rows[i].classList.add('row-new');
+        }
+    }
+
+    function setLiveActive(on) {
+        const btn       = document.getElementById('liveBtn');
+        const indicator = document.getElementById('liveIndicator');
+        const searchBtn = document.getElementById('searchBtn');
+        btn.textContent = on ? '■ Stop Live' : '▶ Go Live';
+        btn.classList.toggle('live-active', on);
+        indicator.style.display = on ? 'flex' : 'none';
+        searchBtn.disabled = on;
+        if (on) {
+            document.getElementById('emptyState').style.display  = 'none';
+            document.getElementById('toolbar').style.display     = 'flex';
+            document.getElementById('tableWrapper').style.display = 'block';
+        }
+    }
+
+    document.getElementById('liveBtn').addEventListener('click', () => {
+        liveInterval ? stopLive() : startLive();
     });
 
     // ── Search button ──────────────────────────────────────────
@@ -786,7 +1046,12 @@
     });
 
     // ── Init ───────────────────────────────────────────────────
+    buildTimezoneSelect();
     setDefaultDates();
+    document.getElementById('tzSelect').addEventListener('change', function () {
+        updateDateInputsForTimezone(this.value);
+        if (allLogs.length > 0) renderTable();
+    });
 
 })();
 </script>
