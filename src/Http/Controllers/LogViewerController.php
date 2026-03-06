@@ -25,7 +25,7 @@ class LogViewerController extends Controller
         }
 
         // Security: only allow groups defined in config
-        $allowedValues   = array_column($this->getEnabledGroups(), 'value');
+        $allowedValues = array_column($this->getEnabledGroups(), 'value');
         $sanitizedGroups = array_values(array_intersect($submittedGroups, $allowedValues));
 
         if (empty($sanitizedGroups)) {
@@ -35,15 +35,15 @@ class LogViewerController extends Controller
         $queryString = $this->buildQueryString($request);
 
         $startTime = $this->resolveStartTime($request);
-        $endTime   = $this->resolveEndTime($request);
+        $endTime = $this->resolveEndTime($request);
 
         $client = $this->makeClient();
 
         $params = [
             'queryString' => $queryString,
-            'startTime'   => $startTime,
-            'endTime'     => $endTime,
-            'limit'       => (int) config('cloudwatch-viewer.query_limit', 500),
+            'startTime' => $startTime,
+            'endTime' => $endTime,
+            'limit' => (int) config('cloudwatch-viewer.query_limit', 500),
         ];
 
         if (count($sanitizedGroups) === 1) {
@@ -54,12 +54,12 @@ class LogViewerController extends Controller
 
         try {
             $startResult = $client->startQuery($params);
-            $queryId     = $startResult['queryId'];
+            $queryId = $startResult['queryId'];
         } catch (\Throwable $e) {
-            return response()->json(['error' => 'Failed to start CloudWatch query: '.$e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to start CloudWatch query: ' . $e->getMessage()], 500);
         }
 
-        $logs   = [];
+        $logs = [];
         $status = 'Unknown';
 
         for ($attempt = 0; $attempt < 10; $attempt++) {
@@ -68,20 +68,20 @@ class LogViewerController extends Controller
             try {
                 $result = $client->getQueryResults(['queryId' => $queryId]);
             } catch (\Throwable $e) {
-                return response()->json(['error' => 'Failed to retrieve query results: '.$e->getMessage()], 500);
+                return response()->json(['error' => 'Failed to retrieve query results: ' . $e->getMessage()], 500);
             }
 
             $status = $result['status'] ?? 'Unknown';
 
-            if (! in_array($status, ['Running', 'Scheduled'])) {
+            if (!in_array($status, ['Running', 'Scheduled'])) {
                 $logs = $this->flattenResults($result['results'] ?? []);
                 break;
             }
         }
 
         return response()->json([
-            'logs'   => $logs,
-            'count'  => count($logs),
+            'logs' => $logs,
+            'count' => count($logs),
             'status' => $status,
         ]);
     }
@@ -97,22 +97,22 @@ class LogViewerController extends Controller
         }
 
         if ($message = $request->input('message')) {
-            $safe      = addslashes($message);
+            $safe = addslashes($message);
             $filters[] = "message like \"{$safe}\"";
         }
 
         if ($userId = $request->input('user_id')) {
-            $safe      = addslashes($userId);
+            $safe = addslashes($userId);
             $filters[] = "context.user_id = \"{$safe}\"";
         }
 
         if ($requestId = $request->input('request_id')) {
-            $safe      = addslashes($requestId);
+            $safe = addslashes($requestId);
             $filters[] = "context.request_id = \"{$safe}\"";
         }
 
         if ($url = $request->input('url')) {
-            $safe      = addslashes($url);
+            $safe = addslashes($url);
             $filters[] = "context.url like \"{$safe}\"";
         }
 
@@ -131,8 +131,8 @@ class LogViewerController extends Controller
 
         $queryString = "fields {$fields}";
 
-        if (! empty($filters)) {
-            $queryString .= "\n| filter ".implode(' and ', $filters);
+        if (!empty($filters)) {
+            $queryString .= "\n| filter " . implode(' and ', $filters);
         }
 
         $limit = (int) config('cloudwatch-viewer.query_limit', 500);
@@ -186,18 +186,18 @@ class LogViewerController extends Controller
     private function makeClient(): CloudWatchLogsClient
     {
         $config = [
-            'region'  => config('cloudwatch-viewer.region', 'us-east-1'),
+            'region' => config('cloudwatch-viewer.region', 'us-east-1'),
             'version' => 'latest',
         ];
 
-        if (config('cloudwatch-viewer.aws_key') && config('cloudwatch-viewer.aws_secret')) {
-            $config['credentials'] = [
-                'key'    => config('cloudwatch-viewer.aws_key'),
-                'secret' => config('cloudwatch-viewer.aws_secret'),
-            ];
-        } elseif (config('cloudwatch-viewer.aws_profile')) {
-            $config['profile'] = config('cloudwatch-viewer.aws_profile');
+        $authBy = config('cloudwatch-viewer.auth_by', 'iam');
+
+        if ($authBy === 'credentials') {
+            $config['credentials'] = config('cloudwatch-viewer.credentials');
+        } elseif ($authBy === 'profile') {
+            $config['profile'] = config('cloudwatch-viewer.profile');
         }
+        // 'iam': no credentials set — SDK uses instance/task role automatically
 
         return new CloudWatchLogsClient($config);
     }
@@ -206,6 +206,6 @@ class LogViewerController extends Controller
     {
         $groups = config('cloudwatch-viewer.groups', []);
 
-        return array_values(array_filter($groups, fn ($g) => ($g['enabled'] ?? true) === true));
+        return array_values(array_filter($groups, fn($g) => ($g['enabled'] ?? true) === true));
     }
 }

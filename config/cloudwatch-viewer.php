@@ -31,14 +31,18 @@ return [
     |--------------------------------------------------------------------------
     | AWS Authentication
     |--------------------------------------------------------------------------
-    | The package will use credentials in this order:
-    | 1. Access key + secret (if AWS_ACCESS_KEY_ID is set)
-    | 2. Named profile (if AWS_PROFILE is set)
-    | 3. IAM role (EC2/ECS/App Runner instance role — no config needed)
+    | Controls how the package authenticates with AWS. Valid values:
+    |
+    |   'iam'         — Use the instance/task/App Runner IAM role (default, no keys needed)
+    |   'credentials' — Explicit access key + secret (set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)
+    |   'profile'     — Named credentials profile (set AWS_PROFILE)
     */
-    'aws_key'     => env('AWS_ACCESS_KEY_ID'),
-    'aws_secret'  => env('AWS_SECRET_ACCESS_KEY'),
-    'aws_profile' => env('AWS_PROFILE'),
+    'auth_by'     => env('AWS_AUTH_BY', 'iam'),
+    'credentials' => [
+        'key'    => env('AWS_ACCESS_KEY_ID'),
+        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+    ],
+    'profile'     => env('AWS_PROFILE'),
 
     /*
     |--------------------------------------------------------------------------
