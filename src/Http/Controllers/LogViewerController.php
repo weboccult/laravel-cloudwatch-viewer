@@ -12,8 +12,9 @@ class LogViewerController extends Controller
     public function index(): \Illuminate\View\View
     {
         $logGroups = $this->getEnabledGroups();
+        $columns   = config('cloudwatch-viewer.columns', []);
 
-        return view('cloudwatch-viewer::index', compact('logGroups'));
+        return view('cloudwatch-viewer::index', compact('logGroups', 'columns'));
     }
 
     public function fetch(Request $request): JsonResponse
@@ -116,18 +117,14 @@ class LogViewerController extends Controller
             $filters[] = "context.url like \"{$safe}\"";
         }
 
-        $fields = implode(', ', [
-            '@timestamp',
-            '@logStream',
-            'level_name',
-            'message',
-            'context.request_id',
-            'context.user_id',
-            'context.url',
-            'context.method',
-            'context.ip',
-            'context.environment',
-        ]);
+        $configFields = config('cloudwatch-viewer.fields', []);
+
+        // @timestamp is always required for sorting
+        if (! in_array('@timestamp', $configFields)) {
+            array_unshift($configFields, '@timestamp');
+        }
+
+        $fields = implode(', ', $configFields);
 
         $queryString = "fields {$fields}";
 

@@ -198,12 +198,7 @@
         position: sticky; top: 0; z-index: 10;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    thead th:nth-child(1) { width: 160px; }
-    thead th:nth-child(2) { width: 90px; }
-    thead th:nth-child(3) { /* message — flex */ }
-    thead th:nth-child(4) { width: 110px; }
-    thead th:nth-child(5) { width: 160px; }
-    thead th:nth-child(6) { width: 100px; }
+    .default-cell { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
     tbody tr:hover { background: var(--surface2); }
     tbody td { padding: 9px 14px; font-size: 12px; vertical-align: middle; overflow: hidden; }
@@ -411,13 +406,22 @@
         <div class="table-wrapper" id="tableWrapper" style="display:none;">
             <table>
                 <thead>
+                    @php
+                        $colWidths = [
+                            '@timestamp'         => '160px',
+                            'level_name'         => '90px',
+                            'message'            => '',
+                            'context.request_id' => '100px',
+                            'context.user_id'    => '110px',
+                            'context.url'        => '160px',
+                            '@logStream'         => '140px',
+                        ];
+                    @endphp
                     <tr>
-                        <th>Timestamp</th>
-                        <th>Level</th>
-                        <th>Message</th>
-                        <th>User ID</th>
-                        <th>URL</th>
-                        <th>Request ID</th>
+                        @foreach ($columns as $col)
+                            @php $w = $colWidths[$col['field']] ?? '120px'; @endphp
+                            <th style="{{ $w ? 'width:'.$w.';' : '' }}">{{ $col['label'] }}</th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody id="logTableBody"></tbody>
@@ -457,6 +461,7 @@
 
     const PAGE_SIZE   = 25;
     const FETCH_URL   = '{{ route('cloudwatch-viewer.fetch') }}';
+    const COLUMNS     = @json($columns);
 
     let allLogs       = [];
     let currentPage   = 1;
@@ -495,6 +500,25 @@
                 hour12: false
             });
         } catch(e) { return escHtml(ts); }
+    }
+
+    // ── Cell renderer ─────────────────────────────────────────
+    function renderCell(field, val, idx) {
+        const v = val ?? '';
+        switch (field) {
+            case '@timestamp':
+                return `<td class="ts-cell">${escHtml(formatTs(v))}</td>`;
+            case 'level_name':
+                return `<td>${levelBadge((v).toUpperCase())}</td>`;
+            case 'message':
+                return `<td class="msg-cell" data-idx="${idx}" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
+            case 'context.request_id': {
+                const rid = v;
+                return `<td class="rid-cell" data-rid="${escHtml(rid)}" title="${escHtml(rid)}">${escHtml(rid ? rid.slice(0, 8) : '—')}</td>`;
+            }
+            default:
+                return `<td class="default-cell" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
+        }
     }
 
     // ── Default date range (last 24 hours) ────────────────────
@@ -601,23 +625,9 @@
         count.innerHTML = `Showing <strong>${pageStart + 1}–${pageStart + pageLogs.length}</strong> of <strong>${allLogs.length}</strong> results`;
 
         tbody.innerHTML = pageLogs.map((log, idx) => {
-            const absIdx  = pageStart + idx;
-            const ts      = formatTs(log['@timestamp']);
-            const level   = (log['level_name'] || '').toUpperCase();
-            const msg     = log['message'] || '—';
-            const uid     = log['context.user_id'] || '—';
-            const url     = log['context.url'] || '—';
-            const rid     = log['context.request_id'] || '';
-            const ridDisp = rid ? shortRid(rid) : '—';
-
-            return `<tr>
-                <td class="ts-cell">${escHtml(ts)}</td>
-                <td>${levelBadge(level || log['level_name'])}</td>
-                <td class="msg-cell" data-idx="${absIdx}" title="${escHtml(msg)}">${escHtml(msg)}</td>
-                <td class="uid-cell">${escHtml(uid)}</td>
-                <td class="url-cell" title="${escHtml(url)}">${escHtml(url)}</td>
-                <td class="rid-cell" data-rid="${escHtml(rid)}" title="${escHtml(rid)}">${escHtml(ridDisp)}</td>
-            </tr>`;
+            const absIdx = pageStart + idx;
+            const cells  = COLUMNS.map(col => renderCell(col.field, log[col.field], absIdx)).join('');
+            return `<tr>${cells}</tr>`;
         }).join('');
 
         // Message click → modal
@@ -685,28 +695,29 @@
         const fields = document.getElementById('modalFields');
         const raw    = document.getElementById('modalRaw');
 
-        const FIELD_MAP = [
-            ['@timestamp',          'Timestamp'],
-            ['level_name',          'Level'],
-            ['message',             'Message'],
-            ['context.user_id',     'User ID'],
-            ['context.request_id',  'Request ID'],
-            ['context.method',      'Method'],
-            ['context.url',         'URL'],
-            ['context.ip',          'IP Address'],
-            ['context.environment', 'Environment'],
-            ['@logStream',          'Log Stream'],
-        ];
+        const FIELD_LABELS = {
+            '@timestamp':          'Timestamp',
+            'level_name':          'Level',
+            'message':             'Message',
+            'context.user_id':     'User ID',
+            'context.request_id':  'Request ID',
+            'context.method':      'Method',
+            'context.url':         'URL',
+            'context.ip':          'IP Address',
+            'context.environment': 'Environment',
+            '@logStream':          'Log Stream',
+        };
 
-        fields.innerHTML = FIELD_MAP.map(([key, label]) => {
-            const val = log[key];
-            if (val == null || val === '') return '';
-            const isMsg = key === 'message';
-            return `<div class="modal-field${isMsg ? ' full' : ''}">
-                <label>${escHtml(label)}</label>
-                <div class="val">${escHtml(val)}</div>
-            </div>`;
-        }).join('');
+        fields.innerHTML = Object.entries(log)
+            .filter(([, v]) => v != null && v !== '')
+            .map(([key, val]) => {
+                const label = FIELD_LABELS[key] || key;
+                const isMsg = key === 'message';
+                return `<div class="modal-field${isMsg ? ' full' : ''}">
+                    <label>${escHtml(label)}</label>
+                    <div class="val">${escHtml(val)}</div>
+                </div>`;
+            }).join('');
 
         raw.textContent = JSON.stringify(log, null, 2);
 

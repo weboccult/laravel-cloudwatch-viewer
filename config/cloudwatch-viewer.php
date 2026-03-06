@@ -63,6 +63,51 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Fields to Fetch
+    |--------------------------------------------------------------------------
+    | CloudWatch Insights fields included in every query.
+    | @timestamp is always fetched automatically (required for sorting).
+    | Add or remove fields to match your log structure.
+    */
+    'fields' => [
+        '@timestamp',
+        '@logStream',
+        'level_name',
+        'message',
+        'context.request_id',
+        'context.user_id',
+        'context.url',
+        'context.method',
+        'context.ip',
+        'context.environment',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Table Columns
+    |--------------------------------------------------------------------------
+    | Columns shown in the log table. Each entry maps a header label to the
+    | CloudWatch field it reads from.
+    |
+    | Special rendering is applied automatically for these known fields:
+    |   @timestamp           → formatted datetime
+    |   level_name           → coloured badge
+    |   message              → truncated, click to open detail modal
+    |   context.request_id   → first 8 chars, click to filter by request
+    |
+    | Any other field renders as plain truncated text.
+    */
+    'columns' => [
+        ['label' => 'Timestamp',  'field' => '@timestamp'],
+        ['label' => 'Level',      'field' => 'level_name'],
+        ['label' => 'Message',    'field' => 'message'],
+        ['label' => 'User ID',    'field' => 'context.user_id'],
+        ['label' => 'URL',        'field' => 'context.url'],
+        ['label' => 'Request ID', 'field' => 'context.request_id'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Log Groups
     |--------------------------------------------------------------------------
     | Define the CloudWatch log groups available in the viewer.
