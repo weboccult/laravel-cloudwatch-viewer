@@ -1,10 +1,10 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer\Tests\Feature;
+namespace Weboccult\CloudWatchViewer\Tests\Feature;
 
-use Adiechahk\CloudWatchViewer\Http\Controllers\LogViewerController;
-use Adiechahk\CloudWatchViewer\Tests\Fakes\FakeLogViewerController;
-use Adiechahk\CloudWatchViewer\Tests\TestCase;
+use Weboccult\CloudWatchViewer\Http\Controllers\LogViewerController;
+use Weboccult\CloudWatchViewer\Tests\Fakes\FakeLogViewerController;
+use Weboccult\CloudWatchViewer\Tests\TestCase;
 use Aws\CloudWatchLogs\CloudWatchLogsClient;
 use Aws\Exception\AwsException;
 use Aws\MockHandler;

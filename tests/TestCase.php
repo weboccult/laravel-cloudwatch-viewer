@@ -1,8 +1,8 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer\Tests;
+namespace Weboccult\CloudWatchViewer\Tests;
 
-use Adiechahk\CloudWatchViewer\CloudWatchViewerServiceProvider;
+use Weboccult\CloudWatchViewer\CloudWatchViewerServiceProvider;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
 abstract class TestCase extends OrchestraTestCase

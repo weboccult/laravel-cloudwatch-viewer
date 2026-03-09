@@ -1,9 +1,9 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer\Tests\Fakes;
+namespace Weboccult\CloudWatchViewer\Tests\Fakes;
 
 use Aws\CloudWatchLogs\CloudWatchLogsClient;
-use Adiechahk\CloudWatchViewer\Http\Controllers\LogViewerController;
+use Weboccult\CloudWatchViewer\Http\Controllers\LogViewerController;
 
 class FakeLogViewerController extends LogViewerController
 {

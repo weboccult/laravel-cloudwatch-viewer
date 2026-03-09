@@ -1,8 +1,8 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer\Tests\Feature;
+namespace Weboccult\CloudWatchViewer\Tests\Feature;
 
-use Adiechahk\CloudWatchViewer\Tests\TestCase;
+use Weboccult\CloudWatchViewer\Tests\TestCase;
 
 class IndexTest extends TestCase
 {

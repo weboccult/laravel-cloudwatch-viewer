@@ -1,8 +1,8 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer\Tests\Unit;
+namespace Weboccult\CloudWatchViewer\Tests\Unit;
 
-use Adiechahk\CloudWatchViewer\Tests\TestCase;
+use Weboccult\CloudWatchViewer\Tests\TestCase;
 
 class ParseLogEventTest extends TestCase
 {

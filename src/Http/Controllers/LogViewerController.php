@@ -1,6 +1,6 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer\Http\Controllers;
+namespace Weboccult\CloudWatchViewer\Http\Controllers;
 
 use Aws\CloudWatchLogs\CloudWatchLogsClient;
 use Illuminate\Http\JsonResponse;

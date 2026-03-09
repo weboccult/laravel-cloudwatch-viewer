@@ -1,6 +1,6 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer;
+namespace Weboccult\CloudWatchViewer;
 
 use Illuminate\Support\ServiceProvider;
 

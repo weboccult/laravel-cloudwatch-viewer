@@ -1,9 +1,9 @@
 <?php
 
-namespace Adiechahk\CloudWatchViewer\Tests\Unit;
+namespace Weboccult\CloudWatchViewer\Tests\Unit;
 
-use Adiechahk\CloudWatchViewer\Http\Controllers\LogViewerController;
-use Adiechahk\CloudWatchViewer\Tests\TestCase;
+use Weboccult\CloudWatchViewer\Http\Controllers\LogViewerController;
+use Weboccult\CloudWatchViewer\Tests\TestCase;
 use Illuminate\Http\Request;
 
 /**

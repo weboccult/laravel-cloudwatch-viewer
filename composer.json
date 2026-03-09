@@ -1,8 +1,8 @@
 {
-    "name": "adiechahk/laravel-cloudwatch-viewer",
+    "name": "weboccult/laravel-cloudwatch-viewer",
     "description": "A beautiful, zero-dependency UI for querying and viewing AWS CloudWatch logs directly inside your Laravel application.",
     "keywords": ["laravel", "cloudwatch", "logs", "viewer", "aws", "insights"],
-    "homepage": "https://github.com/adiechahk/laravel-cloudwatch-viewer",
+    "homepage": "https://github.com/weboccult/laravel-cloudwatch-viewer",
     "license": "MIT",
     "authors": [
         {
@@ -22,18 +22,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Adiechahk\\CloudWatchViewer\\": "src/"
+            "Weboccult\\CloudWatchViewer\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Adiechahk\\CloudWatchViewer\\Tests\\": "tests/"
+            "Weboccult\\CloudWatchViewer\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Adiechahk\\CloudWatchViewer\\CloudWatchViewerServiceProvider"
+                "Weboccult\\CloudWatchViewer\\CloudWatchViewerServiceProvider"
             ]
         }
     },

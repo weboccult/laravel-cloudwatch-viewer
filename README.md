@@ -37,7 +37,7 @@ A beautiful, zero-dependency UI for querying and live-streaming AWS CloudWatch l
 ### 1. Install the package
 
 ```bash
-composer require adiechahk/laravel-cloudwatch-viewer
+composer require weboccult/laravel-cloudwatch-viewer
 ```
 
 The service provider is auto-discovered via Laravel's package auto-discovery.

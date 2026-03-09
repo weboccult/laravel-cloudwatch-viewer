@@ -1,6 +1,6 @@
 <?php
 
-use Adiechahk\CloudWatchViewer\Http\Controllers\LogViewerController;
+use Weboccult\CloudWatchViewer\Http\Controllers\LogViewerController;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
