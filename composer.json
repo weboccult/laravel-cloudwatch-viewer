@@ -1,50 +1,63 @@
 {
-    "name": "weboccult/laravel-cloudwatch-viewer",
-    "description": "A beautiful, zero-dependency UI for querying and viewing AWS CloudWatch logs directly inside your Laravel application.",
-    "keywords": ["laravel", "cloudwatch", "logs", "viewer", "aws", "insights"],
-    "homepage": "https://github.com/weboccult/laravel-cloudwatch-viewer",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "adiechahk",
-            "homepage": "https://github.com/adiechahk"
-        }
-    ],
-    "require": {
-        "php": "^8.1",
-        "illuminate/support": "^10.0|^11.0|^12.0",
-        "illuminate/routing": "^10.0|^11.0|^12.0",
-        "illuminate/http": "^10.0|^11.0|^12.0",
-        "aws/aws-sdk-php": "^3.0"
-    },
-    "require-dev": {
-        "orchestra/testbench": "^8.0|^9.0|^10.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "Weboccult\\CloudWatchViewer\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Weboccult\\CloudWatchViewer\\Tests\\": "tests/"
-        }
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Weboccult\\CloudWatchViewer\\CloudWatchViewerServiceProvider"
-            ]
-        }
-    },
-    "scripts": {
-        "test": "vendor/bin/phpunit",
-        "test:unit": "vendor/bin/phpunit --testsuite Unit",
-        "test:feature": "vendor/bin/phpunit --testsuite Feature"
-    },
-    "config": {
-        "sort-packages": true
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+	"name": "weboccult/laravel-cloudwatch-viewer",
+	"description": "A beautiful, zero-dependency UI for querying and viewing AWS CloudWatch logs directly inside your Laravel application.",
+	"keywords": [
+		"laravel",
+		"cloudwatch",
+		"logs",
+		"viewer",
+		"aws",
+		"insights"
+	],
+	"homepage": "https://github.com/weboccult/laravel-cloudwatch-viewer",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "weboccult",
+			"email": "weboccults@gmail.com",
+			"homepage": "https://github.com/weboccult"
+		},
+		{
+			"name": "AdiechaHK",
+			"email": "harikrushna@weboccult.com",
+			"homepage": "https://github.com/AdiechaHK"
+		}
+	],
+	"require": {
+		"php": "^8.1",
+		"illuminate/support": "^10.0|^11.0|^12.0",
+		"illuminate/routing": "^10.0|^11.0|^12.0",
+		"illuminate/http": "^10.0|^11.0|^12.0",
+		"aws/aws-sdk-php": "^3.0"
+	},
+	"require-dev": {
+		"orchestra/testbench": "^8.0|^9.0|^10.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Weboccult\\CloudWatchViewer\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Weboccult\\CloudWatchViewer\\Tests\\": "tests/"
+		}
+	},
+	"extra": {
+		"laravel": {
+			"providers": [
+				"Weboccult\\CloudWatchViewer\\CloudWatchViewerServiceProvider"
+			]
+		}
+	},
+	"scripts": {
+		"test": "vendor/bin/phpunit",
+		"test:unit": "vendor/bin/phpunit --testsuite Unit",
+		"test:feature": "vendor/bin/phpunit --testsuite Feature"
+	},
+	"config": {
+		"sort-packages": true
+	},
+	"minimum-stability": "stable",
+	"prefer-stable": true
 }
